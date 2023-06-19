@@ -1,14 +1,17 @@
 use iced::{
     executor,
-    futures::{channel::mpsc::{channel, Sender, Receiver}, SinkExt},
+    futures::{
+        channel::mpsc::{channel, Receiver, Sender},
+        SinkExt,
+    },
     widget::{button, column, row, text, text_input},
     Alignment, Application, Command, Executor, Sandbox, Settings, Theme,
 };
 use std::{io, thread};
 // use std::sync::mpsc::channel;
 
+#[derive(Default)]
 pub struct Login {
-    receiver: Receiver<String>,
     username: String,
     password: String,
     hint: String,
@@ -16,7 +19,6 @@ pub struct Login {
 
 #[derive(Debug, Clone)]
 pub enum LoginMessage {
-    None,
     UsernameChanged(String),
     PasswordChanged(String),
     RecievedMessage(String),
@@ -24,10 +26,10 @@ pub enum LoginMessage {
     SignUp,
 }
 
-async fn recieveMessage(mut tx: Sender<String>) {
+async fn recieve_message() -> String {
     let mut line = String::new();
     io::stdin().read_line(&mut line).unwrap();
-    tx.send(line);
+    line
 }
 
 impl Application for Login {
@@ -35,15 +37,9 @@ impl Application for Login {
     type Executor = executor::Default;
     type Flags = ();
     fn new(_flags: ()) -> (Self, Command<Self::Message>) {
-        let (mut tx, mut rx) = channel::<String>(500);
         (
-            Login {
-                receiver: rx,
-                username: String::new(),
-                password: String::new(),
-                hint: String::new(),
-            },
-            Command::perform(recieveMessage(tx), || LoginMessage::None),
+            Default::default(),
+            Command::perform(recieve_message(), |s| LoginMessage::RecievedMessage(s)),
         )
     }
 
@@ -64,14 +60,18 @@ impl Application for Login {
                     self.hint = "Username too long".to_string();
                 } else if self.password.len() > 32 {
                     self.hint = "Password too long".to_string();
+                } else {
+                    print!("Login\n{}\n{}", self.username,self.password);
                 }
             }
             Self::Message::SignUp => {
-                // window::resize<Self::Message>(600, 800);
-                // super::signup::SignUp::run(Default::default());
+                print!("SignUp\n{}\n{}", self.username,self.password);
+            }
+            Self::Message::RecievedMessage(s) => {
+                println!("recieved: {}", s);
             }
         }
-        Command::none()
+        Command::perform(recieve_message(), |s| LoginMessage::RecievedMessage(s))
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
