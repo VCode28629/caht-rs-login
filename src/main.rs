@@ -1,9 +1,9 @@
 use iced::{
     executor,
     widget::{button, column, row, text, text_input},
-    window, Alignment, Application, Command, Settings, Theme, Color, Element,
+    window, Alignment, Application, Color, Command, Element, Settings, Theme,
 };
-use std::io;
+use std::{io, process::exit};
 
 #[derive(Default)]
 pub struct Login {
@@ -27,17 +27,38 @@ async fn recieve_message() -> String {
     line
 }
 
+impl Drop for Login {
+    fn drop(&mut self) {
+        print!("Exit\n");
+    }
+}
+impl Login {
+    fn handle_message(&mut self, message: String) {
+        let message = message.trim_end();
+        match message {
+            "EXIST" => {
+                self.hint = "User Exists".to_string();
+            }
+            "OK" => {
+                exit(0);
+            }
+            "WRONG" => {
+                self.hint = "Wrong Username or Password".to_string();
+            }
+            _ => {
+                eprintln!("unreachable message: {message}");
+                unreachable!()
+            }
+        }
+    }
+}
+
 impl Application for Login {
     type Message = LoginMessage;
     type Executor = executor::Default;
     type Flags = ();
     fn new(_flags: ()) -> (Self, Command<Self::Message>) {
         (
-            // Login {
-            //     username: String::new(),
-            //     password: String::new(),
-            //     hint: String::from("aaaavbsdvdsa"),
-            // },
             Default::default(),
             Command::perform(recieve_message(), |s| LoginMessage::RecievedMessage(s)),
         )
@@ -51,27 +72,47 @@ impl Application for Login {
         match message {
             Self::Message::UsernameChanged(username) => {
                 self.username = username;
+                Command::none()
             }
             Self::Message::PasswordChanged(password) => {
                 self.password = password;
+                Command::none()
             }
             Self::Message::Login => {
                 if self.username.len() > 32 {
                     self.hint = "Username too long".to_string();
                 } else if self.password.len() > 32 {
                     self.hint = "Password too long".to_string();
+                } else if self.username.is_empty() {
+                    self.hint = "Please enter a username".to_string();
+                } else if self.password.is_empty() {
+                    self.hint = "Please enter your password".to_string();
                 } else {
-                    print!("Login\n{}\n{}\n\n", self.username, self.password);
+                    print!("Login\n{}\n{}\n", self.username, self.password);
                 }
+                Command::none()
             }
             Self::Message::SignUp => {
-                print!("SignUp\n{}\n{}\n\n", self.username, self.password);
+                if self.username.len() > 32 {
+                    self.hint = "Username too long".to_string();
+                } else if self.password.len() > 32 {
+                    self.hint = "Password too long".to_string();
+                } else if self.username.is_empty() {
+                    self.hint = "Please enter a username".to_string();
+                } else if self.password.is_empty() {
+                    self.hint = "Please enter your password".to_string();
+                } else {
+                    print!("SignUp\n{}\n{}\n", self.username, self.password);
+                }
+                Command::none()
             }
             Self::Message::RecievedMessage(s) => {
-                print!("recieved: {}\n\n", s);
+                self.handle_message(s);
+                // eprint!("recieved: {}\n", s);
+                Command::perform(recieve_message(), |s| LoginMessage::RecievedMessage(s))
+
             }
         }
-        Command::perform(recieve_message(), |s| LoginMessage::RecievedMessage(s))
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
@@ -110,7 +151,7 @@ fn main() -> iced::Result {
             resizable: false,
             ..Default::default()
         },
-        default_font: Some(include_bytes!("../resources/fonts/simsun.ttc")),
+        // default_font: Some(include_bytes!("../resources/fonts/simsun.ttc")),
         ..Default::default()
     })
 }
