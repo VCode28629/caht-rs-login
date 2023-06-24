@@ -3,7 +3,10 @@ use iced::{
     widget::{button, column, row, text, text_input},
     window, Alignment, Application, Color, Command, Element, Settings, Theme,
 };
-use std::{io, process::exit};
+use std::{
+    io::{self, Write},
+    process::exit,
+};
 
 #[derive(Default)]
 pub struct Login {
@@ -24,18 +27,26 @@ pub enum LoginMessage {
 async fn recieve_message() -> String {
     let mut line = String::new();
     io::stdin().read_line(&mut line).unwrap();
+    let line = line.trim_end().to_string();
+    eprintln!("Login: read message: {}", line);
     line
+}
+
+fn write(s: &str) {
+    eprintln!("Login: Write message: {}", s);
+    io::stdout().write_all(s.as_bytes()).unwrap();
+    io::stdout().flush().unwrap();
 }
 
 impl Drop for Login {
     fn drop(&mut self) {
-        print!("Exit\n");
+        write("Exit\n");
     }
 }
+
 impl Login {
     fn handle_message(&mut self, message: String) {
-        let message = message.trim_end();
-        match message {
+        match message.as_str() {
             "EXIST" => {
                 self.hint = "User Exists".to_string();
             }
@@ -88,7 +99,7 @@ impl Application for Login {
                 } else if self.password.is_empty() {
                     self.hint = "Please enter your password".to_string();
                 } else {
-                    print!("Login\n{}\n{}\n", self.username, self.password);
+                    write(&format!("Login\n{}\n{}\n", self.username, self.password));
                 }
                 Command::none()
             }
@@ -102,15 +113,13 @@ impl Application for Login {
                 } else if self.password.is_empty() {
                     self.hint = "Please enter your password".to_string();
                 } else {
-                    print!("SignUp\n{}\n{}\n", self.username, self.password);
+                    write(&format!("SignUp\n{}\n{}\n", self.username, self.password));
                 }
                 Command::none()
             }
             Self::Message::RecievedMessage(s) => {
                 self.handle_message(s);
-                // eprint!("recieved: {}\n", s);
                 Command::perform(recieve_message(), |s| LoginMessage::RecievedMessage(s))
-
             }
         }
     }
